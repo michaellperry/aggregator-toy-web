@@ -281,20 +281,32 @@ interface Sale {
     price: number;
 }
 
-// Create a pipeline that groups by category and sums prices
-const pipeline = createPipeline&lt;Sale&gt;()
+// Create a pipeline builder that groups by category and sums prices
+const builder = createPipeline&lt;Sale&gt;()
     .groupBy(['category'], 'items')
-    .sum('items', 'price', 'totalRevenue')
-    .build(setState, typeDescriptor);
+    .sum('items', 'price', 'totalRevenue');
+
+// Get the type descriptor for the pipeline
+const typeDescriptor = builder.getTypeDescriptor();
+
+// State management (you provide the setState function)
+let state: KeyedArray&lt;typeof builder&gt; = [];
+const setState = (transform: (s: typeof state) => typeof state) => {
+    state = transform(state);
+};
+
+// Build the pipeline with state management
+const pipeline = builder.build(setState, typeDescriptor);
 
 // Add items to the pipeline
 pipeline.add('sale1', { category: 'Electronics', product: 'Phone', price: 500 });
 pipeline.add('sale2', { category: 'Electronics', product: 'Laptop', price: 1200 });
 pipeline.add('sale3', { category: 'Clothing', product: 'Shirt', price: 50 });
 
-// Output: [
-//   { category: 'Electronics', totalRevenue: 1700, items: [...] },
-//   { category: 'Clothing', totalRevenue: 50, items: [...] }
+// state now contains:
+// [
+//   { key: 'hash1', value: { category: 'Electronics', totalRevenue: 1700, items: [...] } },
+//   { key: 'hash2', value: { category: 'Clothing', totalRevenue: 50, items: [...] } }
 // ]</code></pre>
         </section>
         
@@ -368,11 +380,16 @@ pipeline.add('sale3', { category: 'Clothing', product: 'Shirt', price: 50 });
     capacity: number;
 }
 
-const pipeline = createPipeline&lt;Venue&gt;()
+const builder = createPipeline&lt;Venue&gt;()
     .groupBy(['state', 'city'], 'venues')
     .groupBy(['state'], 'cities')
     .in('cities').count('venues', 'venueCount')
     .in('cities').sum('venues', 'capacity', 'totalCapacity');
+
+// Build the pipeline with your state management
+const typeDescriptor = builder.getTypeDescriptor();
+let state = [];
+const pipeline = builder.build(s => { state = s(state); }, typeDescriptor);
 
 pipeline.add('v1', { state: 'TX', city: 'Dallas', venue: 'Arena', capacity: 20000 });
 pipeline.add('v2', { state: 'TX', city: 'Dallas', venue: 'Stadium', capacity: 50000 });
